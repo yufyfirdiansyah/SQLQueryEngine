@@ -45,13 +45,16 @@
             <div>
                 <h1 class="font-bold text-base flex items-center gap-2">
                     Web SQL Query Studio
-                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">PROJECT SHARE ENGINE</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">AUTO-SYNC ENGINE</span>
                 </h1>
-                <p class="text-xs text-mutedForeground">Analisis Data Excel & Multi-Cell Project Manager</p>
+                <p class="text-xs text-mutedForeground">Analisis Data Excel, CSV, & Google Sheets Public Link</p>
             </div>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="openGSheetModal()" class="text-xs font-medium px-3 py-2 rounded-md border border-border bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition flex items-center gap-1.5">
+                <i data-lucide="link" class="w-4 h-4"></i> Connect Google Sheet
+            </button>
             <label class="text-xs font-medium px-3 py-2 rounded-md border border-border bg-emerald-600 text-white hover:bg-emerald-500 transition cursor-pointer flex items-center gap-1.5">
                 <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel / CSV
                 <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)" class="hidden">
@@ -62,7 +65,7 @@
     <!-- Status Loading Bar -->
     <div id="loadingBar" class="hidden bg-emerald-600 text-white text-xs px-6 py-2 flex items-center justify-between">
         <span class="flex items-center gap-2">
-            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memproses file Excel ke memori SQL...
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span id="loadingMsg">Memproses data ke memori SQL...</span>
         </span>
     </div>
 
@@ -72,7 +75,7 @@
             <i data-lucide="folder-kanban" class="w-4 h-4 text-emerald-400"></i> Saved Projects (<span id="savedCount">0</span>):
         </span>
         <div id="savedProjectsList" class="flex items-center gap-2 overflow-x-auto">
-            <span class="text-mutedForeground/60 text-[11px] italic">Belum ada project tersimpan. Buat beberapa query sel di bawah dan simpan sebagai project.</span>
+            <span class="text-mutedForeground/60 text-[11px] italic">Belum ada project tersimpan. Hubungkan Google Sheet & simpan project.</span>
         </div>
     </div>
 
@@ -87,7 +90,7 @@
                 </span>
             </div>
             <div id="tableList" class="p-3 flex-1 overflow-y-auto space-y-2">
-                <p class="text-xs text-mutedForeground text-center py-6">Belum ada tabel dimuat. Silakan upload file Excel Anda.</p>
+                <p class="text-xs text-mutedForeground text-center py-6">Belum ada tabel dimuat. Hubungkan Google Sheet atau Upload Excel.</p>
             </div>
         </aside>
 
@@ -101,10 +104,10 @@
                     <p class="text-xs text-mutedForeground">Susun query kamu di bawah ini, lalu simpan seluruh notebook ini sebagai Project Page.</p>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <button onclick="saveWholeProject()" class="text-xs font-medium px-3 py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1.5" title="Simpan seluruh cell di notebook ini sebagai 1 Project">
+                    <button onclick="saveWholeProject()" class="text-xs font-medium px-3 py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1.5">
                         <i data-lucide="save" class="w-4 h-4"></i> Save Project Page
                     </button>
-                    <button onclick="shareWholeProject()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted text-mutedForeground transition flex items-center gap-1.5" title="Copy Shareable Link untuk seluruh Project">
+                    <button onclick="shareWholeProject()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted text-mutedForeground transition flex items-center gap-1.5">
                         <i data-lucide="share-2" class="w-4 h-4 text-emerald-400"></i> Share Project Link
                     </button>
                     <button onclick="addCell()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition flex items-center gap-1">
@@ -121,10 +124,44 @@
         </main>
     </div>
 
+    <!-- Modal Google Sheets Import -->
+    <div id="gsheetModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-card border border-border rounded-xl p-6 max-w-lg w-full space-y-4 shadow-xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold flex items-center gap-2 text-emerald-400">
+                    <i data-lucide="link" class="w-5 h-5"></i> Connect Google Sheet Public Link
+                </h3>
+                <button onclick="closeGSheetModal()" class="text-mutedForeground hover:text-foreground">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-mutedForeground">
+                Pastikan Google Sheet diset ke <strong>"Anyone with the link can view"</strong> (Public).
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-mutedForeground block mb-1">Google Sheet URL</label>
+                    <input type="text" id="gsheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit" class="w-full bg-background border border-border rounded-md p-2.5 text-xs text-foreground focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-mutedForeground block mb-1">Nama Tabel SQL</label>
+                    <input type="text" id="gsheetTableName" value="Orders" class="w-full bg-background border border-border rounded-md p-2.5 text-xs text-foreground focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeGSheetModal()" class="text-xs px-4 py-2 rounded-md border border-border hover:bg-muted">Batal</button>
+                <button onclick="importGSheetFromModal()" class="text-xs px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 font-medium flex items-center gap-1.5">
+                    <i data-lucide="download" class="w-4 h-4"></i> Connect & Import Data
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Engine -->
     <script>
         let tablesData = {};
         let cellCount = 0;
+        let currentGSheetUrl = ""; // Menyimpan URL Google Sheet aktif saat ini
         let savedProjects = JSON.parse(localStorage.getItem('my_sql_projects') || '[]');
 
         function clearDatabase() {
@@ -136,11 +173,20 @@
             document.getElementById('tableCount').innerText = '0';
         }
 
+        function showLoading(msg) {
+            document.getElementById('loadingMsg').innerText = msg;
+            document.getElementById('loadingBar').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingBar').classList.add('hidden');
+        }
+
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            document.getElementById('loadingBar').classList.remove('hidden');
+            showLoading("Memproses file Excel ke memori SQL...");
 
             setTimeout(() => {
                 const reader = new FileReader();
@@ -150,6 +196,7 @@
                         const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
 
                         clearDatabase();
+                        currentGSheetUrl = ""; // Reset GSheet jika upload file lokal
 
                         workbook.SheetNames.forEach(sheetName => {
                             const worksheet = workbook.Sheets[sheetName];
@@ -157,42 +204,106 @@
 
                             if (rawJson && rawJson.length > 0) {
                                 const cleanTableName = sheetName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
-                                
-                                const cleanJson = rawJson.map(row => {
-                                    let newRow = {};
-                                    for (let key in row) {
-                                        let cleanKey = key.trim().replace(/[^a-zA-Z0-9_ ]/g, '');
-                                        let val = row[key];
-                                        if (val !== null && val !== '' && !isNaN(val) && typeof val !== 'boolean') {
-                                            newRow[cleanKey] = Number(val);
-                                        } else {
-                                            newRow[cleanKey] = val;
-                                        }
-                                    }
-                                    return newRow;
-                                });
-
-                                alasql(`DROP TABLE IF EXISTS ${cleanTableName}`);
-                                alasql(`CREATE TABLE ${cleanTableName}`);
-                                alasql.tables[cleanTableName].data = cleanJson;
-
-                                tablesData[cleanTableName] = {
-                                    rowCount: cleanJson.length,
-                                    columns: Object.keys(cleanJson[0])
-                                };
+                                processAndLoadJson(cleanTableName, rawJson);
                             }
                         });
 
                         renderSidebar();
-                        document.getElementById('loadingBar').classList.add('hidden');
+                        hideLoading();
                         checkUrlQuery();
                     } catch (err) {
                         alert("Gagal membaca file Excel: " + err.message);
-                        document.getElementById('loadingBar').classList.add('hidden');
+                        hideLoading();
                     }
                 };
                 reader.readAsBinaryString(file);
             }, 100);
+        }
+
+        function openGSheetModal() {
+            document.getElementById('gsheetModal').classList.remove('hidden');
+        }
+        function closeGSheetModal() {
+            document.getElementById('gsheetModal').classList.add('hidden');
+        }
+
+        async function importGSheetFromModal() {
+            const rawUrl = document.getElementById('gsheetUrlInput').value.trim();
+            let tableName = document.getElementById('gsheetTableName').value.trim() || 'Orders';
+            tableName = tableName.replace(/[^a-zA-Z0-9_]/g, '_');
+
+            if (!rawUrl) {
+                alert("Masukkan URL Google Sheet!");
+                return;
+            }
+
+            closeGSheetModal();
+            await fetchAndLoadGSheet(rawUrl, tableName);
+        }
+
+        async function fetchAndLoadGSheet(rawUrl, tableName = 'Orders') {
+            const matches = rawUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (!matches || !matches[1]) {
+                alert("URL Google Sheet tidak valid.");
+                return false;
+            }
+
+            const docId = matches[1];
+            const csvUrl = `https://docs.google.com/spreadsheets/d/${docId}/export?format=csv`;
+
+            showLoading(`Menarik data Google Sheet ke tabel '${tableName}'...`);
+
+            try {
+                const response = await fetch(csvUrl);
+                if (!response.ok) {
+                    throw new Error("Gagal mengambil data. Pastikan Google Sheet diset 'Anyone with the link can view'.");
+                }
+                const csvText = await response.text();
+                
+                const workbook = XLSX.read(csvText, { type: 'string' });
+                const firstSheet = workbook.SheetNames[0];
+                const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: null });
+
+                if (rawJson && rawJson.length > 0) {
+                    processAndLoadJson(tableName, rawJson);
+                    renderSidebar();
+                    currentGSheetUrl = rawUrl; // Simpan URL aktif
+                    return true;
+                } else {
+                    alert("Sheet kosong.");
+                    return false;
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+                return false;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function processAndLoadJson(cleanTableName, rawJson) {
+            const cleanJson = rawJson.map(row => {
+                let newRow = {};
+                for (let key in row) {
+                    let cleanKey = key.trim().replace(/[^a-zA-Z0-9_ ]/g, '');
+                    let val = row[key];
+                    if (val !== null && val !== '' && !isNaN(val) && typeof val !== 'boolean') {
+                        newRow[cleanKey] = Number(val);
+                    } else {
+                        newRow[cleanKey] = val;
+                    }
+                }
+                return newRow;
+            });
+
+            alasql(`DROP TABLE IF EXISTS ${cleanTableName}`);
+            alasql(`CREATE TABLE ${cleanTableName}`);
+            alasql.tables[cleanTableName].data = cleanJson;
+
+            tablesData[cleanTableName] = {
+                rowCount: cleanJson.length,
+                columns: Object.keys(cleanJson[0])
+            };
         }
 
         function renderSidebar() {
@@ -202,7 +313,7 @@
             document.getElementById('tableCount').innerText = keys.length;
 
             if (keys.length === 0) {
-                container.innerHTML = `<p class="text-xs text-mutedForeground text-center py-6">Belum ada tabel dimuat.</p>`;
+                container.innerHTML = `<p class="text-xs text-mutedForeground text-center py-6">Belum ada tabel dimuat. Hubungkan Google Sheet atau Upload Excel.</p>`;
                 return;
             }
 
@@ -315,7 +426,6 @@
             }
         }
 
-        // Ambil Seluruh Data Cell di Notebook
         function getCurrentNotebookData() {
             const cells = document.querySelectorAll('.cell-item');
             const notebook = [];
@@ -330,11 +440,10 @@
             return notebook;
         }
 
-        // Simpan Seluruh Notebook sebagai Project Page
         function saveWholeProject() {
             const notebook = getCurrentNotebookData();
             if (notebook.length === 0) {
-                alert("Notebook masih kosong! Tulis minimal 1 query sebelum menyimpan project.");
+                alert("Notebook masih kosong!");
                 return;
             }
 
@@ -344,6 +453,7 @@
             const projectObj = {
                 id: Date.now(),
                 title: projTitle,
+                gsheetUrl: currentGSheetUrl, // Menyimpan URL Google Sheet di dalam Project
                 notebook: notebook
             };
 
@@ -353,14 +463,13 @@
             alert(`Project "${projTitle}" berhasil disimpan ke list bar atas!`);
         }
 
-        // Render Bar List Saved Projects
         function renderSavedProjects() {
             const container = document.getElementById('savedProjectsList');
             document.getElementById('savedCount').innerText = savedProjects.length;
             container.innerHTML = '';
 
             if (savedProjects.length === 0) {
-                container.innerHTML = `<span class="text-mutedForeground/60 text-[11px] italic">Belum ada project tersimpan. Buat beberapa query sel di bawah dan simpan sebagai project.</span>`;
+                container.innerHTML = `<span class="text-mutedForeground/60 text-[11px] italic">Belum ada project tersimpan. Hubungkan Google Sheet & simpan project.</span>`;
                 return;
             }
 
@@ -384,26 +493,28 @@
             lucide.createIcons();
         }
 
-        // Memuat Project Page dari Saved List
-        function loadSavedProject(id) {
+        async function loadSavedProject(id) {
             const proj = savedProjects.find(p => p.id === id);
-            if (proj && proj.notebook) {
-                document.getElementById('notebookCells').innerHTML = '';
-                cellCount = 0;
-                proj.notebook.forEach(item => {
-                    addCell(item.sql, item.desc);
-                });
+            if (proj) {
+                if (proj.gsheetUrl) {
+                    await fetchAndLoadGSheet(proj.gsheetUrl);
+                }
+                if (proj.notebook) {
+                    document.getElementById('notebookCells').innerHTML = '';
+                    cellCount = 0;
+                    proj.notebook.forEach(item => {
+                        addCell(item.sql, item.desc);
+                    });
+                }
             }
         }
 
-        // Hapus Project dari List
         function deleteSavedProject(id) {
             savedProjects = savedProjects.filter(p => p.id !== id);
             localStorage.setItem('my_sql_projects', JSON.stringify(savedProjects));
             renderSavedProjects();
         }
 
-        // Shareable Link untuk Project Saat Ini
         function shareWholeProject() {
             const notebook = getCurrentNotebookData();
             if (notebook.length === 0) {
@@ -411,22 +522,28 @@
                 return;
             }
 
-            const jsonStr = JSON.stringify(notebook);
-            const encoded = encodeURIComponent(jsonStr);
+            const payload = {
+                gsheetUrl: currentGSheetUrl,
+                notebook: notebook
+            };
 
+            const encoded = encodeURIComponent(JSON.stringify(payload));
             const url = new URL(window.location.href);
             url.searchParams.set('project', encoded);
 
             navigator.clipboard.writeText(url.href).then(() => {
-                alert("Shareable Project Link berhasil di-copy ke clipboard!\n\nSiapa pun yang membuka link ini akan otomatis melihat seluruh sel query dalam project ini.");
+                alert("Shareable Project Link berhasil di-copy!\n\nLink ini berisi URL Google Sheet & Query kamu. Saat dibuka teman kamu, data & query akan langsung terisi & terhubung otomatis!");
             });
         }
 
-        // Shareable Link untuk Project Tertentu dari List
         function shareSpecificProject(id) {
             const proj = savedProjects.find(p => p.id === id);
             if (proj && proj.notebook) {
-                const encoded = encodeURIComponent(JSON.stringify(proj.notebook));
+                const payload = {
+                    gsheetUrl: proj.gsheetUrl || "",
+                    notebook: proj.notebook
+                };
+                const encoded = encodeURIComponent(JSON.stringify(payload));
                 const url = new URL(window.location.href);
                 url.searchParams.set('project', encoded);
 
@@ -436,14 +553,20 @@
             }
         }
 
-        // Baca URL Parameter ?project= saat Halaman Dibuka
-        function checkUrlQuery() {
+        async function checkUrlQuery() {
             const urlParams = new URLSearchParams(window.location.search);
             const rawProject = urlParams.get('project');
             
             if (rawProject) {
                 try {
-                    const notebook = JSON.parse(decodeURIComponent(rawProject));
+                    const payload = JSON.parse(decodeURIComponent(rawProject));
+                    
+                    // Jika ada Google Sheet URL di dalam link, tarik datanya dulu!
+                    if (payload.gsheetUrl) {
+                        await fetchAndLoadGSheet(payload.gsheetUrl);
+                    }
+
+                    const notebook = payload.notebook || payload;
                     if (Array.isArray(notebook)) {
                         document.getElementById('notebookCells').innerHTML = '';
                         cellCount = 0;
@@ -464,9 +587,9 @@
             document.querySelectorAll('[id^="cell_"]').forEach(cell => runCell(cell.id));
         }
 
-        window.onload = () => {
+        window.onload = async () => {
             renderSavedProjects();
-            addCell("", "");
+            await checkUrlQuery();
         };
 
         lucide.createIcons();
