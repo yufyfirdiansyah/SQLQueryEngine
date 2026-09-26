@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web SQL Query Studio - Colab & Shadcn Style</title>
-    
+    <title>Web SQL Query Studio</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,910 +12,296 @@
             theme: {
                 extend: {
                     colors: {
-                        border: "hsl(240 3.7% 15.9%)",
-                        input: "hsl(240 3.7% 15.9%)",
-                        ring: "hsl(240 4.9% 83.9%)",
-                        background: "hsl(240 10% 3.9%)",
-                        foreground: "hsl(0 0% 98%)",
-                        primary: {
-                            DEFAULT: "hsl(0 0% 98%)",
-                            foreground: "hsl(240 5.9% 10%)",
-                        },
-                        secondary: {
-                            DEFAULT: "hsl(240 3.7% 15.9%)",
-                            foreground: "hsl(0 0% 98%)",
-                        },
-                        destructive: {
-                            DEFAULT: "hsl(0 62.8% 30.6%)",
-                            foreground: "hsl(0 0% 98%)",
-                        },
-                        muted: {
-                            DEFAULT: "hsl(240 3.7% 15.9%)",
-                            foreground: "hsl(240 5% 64.9%)",
-                        },
-                        accent: {
-                            DEFAULT: "hsl(240 3.7% 15.9%)",
-                            foreground: "hsl(0 0% 98%)",
-                        },
-                        card: {
-                            DEFAULT: "hsl(240 10% 3.9%)",
-                            foreground: "hsl(0 0% 98%)",
-                        },
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+                        border: 'hsl(217.2 32.6% 17.5%)',
+                        background: 'hsl(222.2 84% 4.9%)',
+                        foreground: 'hsl(210 40% 98%)',
+                        card: 'hsl(222.2 84% 4.9%)',
+                        cardForeground: 'hsl(210 40% 98%)',
+                        primary: 'hsl(210 40% 98%)',
+                        primaryForeground: 'hsl(222.2 47.4% 11.2%)',
+                        muted: 'hsl(217.2 32.6% 17.5%)',
+                        mutedForeground: 'hsl(215 20.2% 65.1%)',
+                        accent: 'hsl(217.2 32.6% 17.5%)',
+                        accentForeground: 'hsl(210 40% 98%)',
                     }
                 }
             }
         }
     </script>
-
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Lucide Icons CDN -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- SheetJS (XLSX Reader) CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-    <!-- AlaSQL (In-memory SQL Database Engine) CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
-
-    <!-- html2pdf CDN for Google Colab Style PDF Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
+    <!-- SheetJS & AlaSQL CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alasql@1.7.3/dist/alasql.min.js"></script>
     <style>
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #09090b;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #27272a;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3f3f46;
-        }
-        
-        /* Optimized print/export styling for Google Colab PDF generation */
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white !important; color: black !important; font-family: 'Inter', sans-serif !important; }
-            .card-print { border: 1px solid #e2e8f0 !important; background: #ffffff !important; color: #0f172a !important; margin-bottom: 24px; page-break-inside: avoid; box-shadow: none !important; }
-            .editor-print { background: #f8fafc !important; color: #0f172a !important; border: 1px solid #e2e8f0 !important; font-family: monospace; border-radius: 6px; }
-            .table-print { width: 100% !important; border-collapse: collapse !important; margin-top: 8px; }
-            .table-print th { background: #f1f5f9 !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important; padding: 6px 8px; text-align: left; font-size: 11px; }
-            .table-print td { border: 1px solid #e2e8f0 !important; padding: 6px 8px; text-align: left; font-size: 11px; color: #334155 !important; }
-        }
+        textarea { resize: vertical; min-height: 90px; }
     </style>
 </head>
-<body class="bg-background text-foreground font-sans antialiased min-h-screen flex flex-col selection:bg-zinc-800 selection:text-zinc-100">
+<body class="bg-background text-foreground min-h-screen flex flex-col font-sans antialiased">
 
-    <!-- Top Navbar -->
-    <header class="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-40 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 no-print">
-        <div class="flex items-center space-x-3">
-            <div class="bg-primary/10 text-primary p-2 rounded-lg border border-primary/20 flex items-center justify-center">
-                <i data-lucide="database" class="w-5 h-5 text-emerald-400"></i>
+    <!-- Header / Navbar -->
+    <header class="border-b border-border bg-card/50 backdrop-blur sticky top-0 z-50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
+                <i data-lucide="database" class="w-5 h-5"></i>
             </div>
             <div>
-                <h1 class="text-base font-semibold tracking-tight flex items-center gap-2">
+                <h1 class="font-bold text-base flex items-center gap-2">
                     Web SQL Query Studio
-                    <span class="text-[10px] uppercase tracking-wider bg-emerald-500/10 text-emerald-400 font-mono px-2 py-0.5 rounded border border-emerald-500/20">Client-Side Engine</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">CLIENT-SIDE ENGINE</span>
                 </h1>
-                <p class="text-xs text-muted-foreground">Analisis SQL Excel, CSV, Google Sheets & Relasi Multi-Sheet di Browser</p>
+                <p class="text-xs text-mutedForeground">Analisis Data Excel, CSV, Google Sheets di Browser</p>
             </div>
         </div>
 
-        <!-- Header Action Controls -->
-        <div class="flex flex-wrap items-center gap-2">
-            <button onclick="loadSampleData()" class="text-xs px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-zinc-200 flex items-center gap-1.5 transition shadow-sm" title="Muat dataset sampel orders & customers">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
-                Sample Data (JOIN & Date)
+        <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="loadSampleData()" class="text-xs font-medium px-3 py-2 rounded-md border border-border bg-muted/40 hover:bg-muted transition flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Sample Data
             </button>
-            
-            <button onclick="openGoogleSheetModal()" class="text-xs px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-zinc-200 flex items-center gap-1.5 transition shadow-sm">
-                <i data-lucide="link" class="w-3.5 h-3.5 text-emerald-400"></i>
-                Google Sheet
-            </button>
-            
-            <label class="text-xs px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-zinc-200 flex items-center gap-1.5 cursor-pointer transition shadow-sm">
-                <i data-lucide="upload" class="w-3.5 h-3.5 text-blue-400"></i>
-                Upload Excel / CSV / SQL
-                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv, .sql, .db" class="hidden" onchange="handleFileUpload(event)">
-            </label>
-            
-            <div class="h-4 w-[1px] bg-border mx-1 hidden sm:block"></div>
-            
-            <button onclick="exportToPDF()" class="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-zinc-200 font-medium flex items-center gap-1.5 transition shadow-sm">
-                <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
-                Export Colab PDF
-            </button>
-            
-            <button onclick="exportSQLFile()" class="text-xs px-3 py-1.5 rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700 flex items-center gap-1.5 transition">
-                <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                Save .sql
-            </button>
-            
-            <label class="text-xs px-3 py-1.5 rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700 flex items-center gap-1.5 cursor-pointer transition">
-                <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
-                Load .sql
-                <input type="file" id="sqlFileInput" accept=".sql" class="hidden" onchange="handleLoadSQLFile(event)">
+            <label class="text-xs font-medium px-3 py-2 rounded-md border border-border bg-emerald-600 text-white hover:bg-emerald-500 transition cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel / CSV
+                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)" class="hidden">
             </label>
         </div>
     </header>
 
-    <!-- Main Application Split Layout -->
+    <!-- Main Workspace -->
     <div class="flex-1 flex overflow-hidden">
         
-        <!-- Sidebar Drawer (Tables Inspector & SQL Query History) -->
-        <aside id="sidebar" class="w-80 border-r border-border bg-card flex flex-col shrink-0 no-print transition-all duration-300">
-            <!-- Sidebar Header Tabs -->
-            <div class="flex border-b border-border p-1 bg-zinc-950/50">
-                <button onclick="switchSidebarTab('tables')" id="tab-tables" class="flex-1 text-xs py-1.5 font-medium rounded-sm bg-zinc-800 text-foreground flex items-center justify-center gap-1.5">
-                    <i data-lucide="table" class="w-3.5 h-3.5 text-blue-400"></i> Tables (<span id="table-count">0</span>)
-                </button>
-                <button onclick="switchSidebarTab('history')" id="tab-history" class="flex-1 text-xs py-1.5 font-medium rounded-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5">
-                    <i data-lucide="history" class="w-3.5 h-3.5 text-amber-400"></i> History
-                </button>
-            </div>
-
-            <!-- Tab Content 1: Tables Schema List -->
-            <div id="content-tables" class="flex-1 overflow-y-auto p-3 space-y-3">
-                <div id="no-tables-msg" class="p-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-lg">
-                    <i data-lucide="file-spreadsheet" class="w-8 h-8 mx-auto mb-2 opacity-40 text-emerald-400"></i>
-                    Belum ada data loaded.<br>Upload Excel, CSV, atau hubungkan Google Sheet.
-                </div>
-                <div id="tables-container" class="space-y-3"></div>
-            </div>
-
-            <!-- Tab Content 2: Query Execution History -->
-            <div id="content-history" class="flex-1 overflow-y-auto p-3 space-y-2 hidden">
-                <div id="no-history-msg" class="p-6 text-center text-xs text-muted-foreground">
-                    Belum ada riwayat query yang dieksekusi.
-                </div>
-                <div id="history-list" class="space-y-2"></div>
-            </div>
-
-            <!-- SQL Helper Generators (JOIN & Date Clean Tools) -->
-            <div class="p-3 border-t border-border bg-zinc-900/60 space-y-2">
-                <p class="text-[11px] font-semibold text-zinc-400 flex items-center gap-1">
-                    <i data-lucide="wand-2" class="w-3 h-3 text-amber-400"></i> SQL Helper Generators
-                </p>
-                <div class="grid grid-cols-2 gap-1.5 text-[10px]">
-                    <button onclick="generateJoinSnippet()" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded border border-zinc-700 text-left truncate flex items-center gap-1 transition">
-                        <i data-lucide="git-merge" class="w-3 h-3 text-emerald-400"></i> Auto JOIN
-                    </button>
-                    <button onclick="insertDateCleanSnippet()" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded border border-zinc-700 text-left truncate flex items-center gap-1 transition">
-                        <i data-lucide="calendar" class="w-3 h-3 text-blue-400"></i> Clean Date
-                    </button>
-                </div>
-            </div>
-
-            <!-- Sidebar Footer Status -->
-            <div class="p-3 border-t border-border bg-zinc-950/60 text-[11px] text-muted-foreground flex justify-between items-center font-mono">
-                <span class="flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Engine Ready
+        <!-- Sidebar Tables -->
+        <aside class="w-72 border-r border-border bg-card/30 flex flex-col">
+            <div class="p-4 border-b border-border flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-mutedForeground flex items-center gap-2">
+                    <i data-lucide="table" class="w-4 h-4"></i> Active Tables (<span id="tableCount">0</span>)
                 </span>
-                <span id="memory-usage">AlaSQL In-Memory</span>
+            </div>
+            <div id="tableList" class="p-3 flex-1 overflow-y-auto space-y-2">
+                <p class="text-xs text-mutedForeground text-center py-6">Belum ada tabel dimuat. Silakan upload file Excel Anda.</p>
             </div>
         </aside>
 
-        <!-- Main Workspace (Google Colab Notebook Style) -->
-        <main class="flex-1 overflow-y-auto bg-zinc-950/30 p-4 sm:p-6 space-y-6" id="notebook-container">
-            
-            <!-- Colab Interactive Control Header -->
-            <div class="bg-card border border-border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm no-print">
-                <div class="space-y-1">
-                    <h2 class="text-sm font-semibold flex items-center gap-2">
-                        <i data-lucide="book-open" class="w-4 h-4 text-emerald-400"></i>
-                        SQL Interactive Notebook
+        <!-- Notebook Area -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i data-lucide="code-2" class="w-5 h-5 text-emerald-400"></i> SQL Notebook
                     </h2>
-                    <p class="text-xs text-muted-foreground">
-                        Tulis dan jalankan SQL query di sel bawah. Tekan <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono text-[10px]">Ctrl + Enter</kbd> untuk eksekusi sel.
-                    </p>
+                    <p class="text-xs text-mutedForeground">Klik nama tabel di sidebar kiri untuk otomatis membuat query.</p>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <button onclick="runAllCells()" class="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5 transition shadow-sm">
-                        <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> Run All Cells
+                <div class="flex items-center gap-2">
+                    <button onclick="addCell()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition flex items-center gap-1">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Add Cell
                     </button>
-                    <button onclick="addNotebookCell()" class="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 flex items-center gap-1.5 transition">
-                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add SQL Cell
+                    <button onclick="runAllCells()" class="text-xs font-medium px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 transition flex items-center gap-1">
+                        <i data-lucide="play" class="w-4 h-4"></i> Run All
                     </button>
                 </div>
             </div>
 
-            <!-- Print Header Banner (Appears only during PDF generation) -->
-            <div class="print-only hidden mb-6 p-4 border border-zinc-300 rounded">
-                <h1 class="text-2xl font-bold text-zinc-900">SQL Notebook Execution Report</h1>
-                <p class="text-xs text-zinc-600">Generated via Web SQL Studio | Date: <span id="print-date"></span></p>
-            </div>
-
-            <!-- Cells Container -->
-            <div id="cells-list" class="space-y-6">
-                <!-- Dynamic SQL notebook cells are rendered here -->
-            </div>
-
-            <!-- Bottom Add Cell Trigger Button -->
-            <div class="flex justify-center py-4 no-print">
-                <button onclick="addNotebookCell()" class="text-xs px-4 py-2 rounded-full border border-dashed border-zinc-700 hover:border-zinc-500 text-muted-foreground hover:text-foreground flex items-center gap-2 transition bg-zinc-900/40">
-                    <i data-lucide="plus" class="w-4 h-4 text-emerald-400"></i> Tambah Sel Query Baru
-                </button>
-            </div>
+            <!-- SQL Cells Container -->
+            <div id="notebookCells" class="space-y-4"></div>
         </main>
     </div>
 
-    <!-- Google Sheet Connector Modal -->
-    <div id="gsheet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print">
-        <div class="bg-card border border-border rounded-lg w-full max-w-md p-5 space-y-4 shadow-2xl">
-            <div class="flex items-center justify-between border-b border-border pb-3">
-                <h3 class="text-sm font-semibold flex items-center gap-2">
-                    <i data-lucide="link" class="w-4 h-4 text-emerald-400"></i> Connect Google Sheet (Spesifik Tab)
-                </h3>
-                <button onclick="closeGoogleSheetModal()" class="text-muted-foreground hover:text-foreground">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            </div>
-            <div class="space-y-3">
-                <p class="text-xs text-muted-foreground">
-                    Pastikan akses Google Sheet disetel <span class="text-emerald-400 font-medium">"Anyone with the link can view"</span>. Anda dapat menargetkan tab spesifik dengan memasukkan GID.
-                </p>
-                <div>
-                    <label class="text-xs text-zinc-300 mb-1 block font-medium">Nama Tabel di SQL:</label>
-                    <input type="text" id="gsheet-tablename" placeholder="e.g. gsheet_sales" class="w-full text-xs bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-foreground focus:outline-none focus:border-zinc-600 font-mono">
-                </div>
-                <div>
-                    <label class="text-xs text-zinc-300 mb-1 block font-medium">Link Google Sheet (Bisa menyertakan #gid=...):</label>
-                    <input type="text" id="gsheet-url" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=12345" class="w-full text-xs bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-foreground focus:outline-none focus:border-zinc-600 font-mono">
-                </div>
-                <div>
-                    <label class="text-xs text-zinc-300 mb-1 block font-medium">Sheet GID (Opsional, jika ingin spesifik tab):</label>
-                    <input type="text" id="gsheet-gid" placeholder="e.g. 0 atau angka GID dari URL tab browser" class="w-full text-xs bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-foreground focus:outline-none focus:border-zinc-600 font-mono">
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2 border-t border-border">
-                <button onclick="closeGoogleSheetModal()" class="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Batal</button>
-                <button onclick="fetchGoogleSheet()" class="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Import Tab Google Sheet
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
-
+    <!-- JavaScript Engine -->
     <script>
-        // Global Application State
-        let loadedTables = {};
+        let tablesData = {};
         let cellCount = 0;
-        let queryHistory = [];
-        let cellResultData = {}; // Stores raw JSON query results per cell ID
 
-        // Initialize Application
-        window.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            document.getElementById('print-date').innerText = new Date().toLocaleString();
-
-            // Register Custom AlaSQL Helper Functions for Advanced Date Cleaning
-            registerCustomSqlFunctions();
-
-            // Auto-load sample dataset with JOIN & Date Cleaning demonstration
-            loadSampleData();
-        });
-
-        // Register custom AlaSQL user functions to extend date handling
-        function registerCustomSqlFunctions() {
-            // Function: PARSE_DATE_CLEAN(val)
-            alasql.fn.PARSE_DATE_CLEAN = function(val) {
-                if (!val) return null;
-                const str = String(val).trim();
-                // Match YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
-                const match1 = str.match(/^(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})/);
-                if (match1) {
-                    const y = match1[1];
-                    const m = match1[2].padStart(2, '0');
-                    const d = match1[3].padStart(2, '0');
-                    return `${y}-${m}-${d}`;
-                }
-                // Try parsing standard JS date
-                const dObj = new Date(str);
-                if (!isNaN(dObj.getTime())) {
-                    return dObj.toISOString().slice(0, 10);
-                }
-                return str;
-            };
+        // Reset AlaSQL Database Total
+        function clearDatabase() {
+            alasql('DETACH DATABASE MAIN');
+            alasql('ATTACH DATABASE MAIN');
+            tablesData = {};
+            document.getElementById('tableList').innerHTML = '';
+            document.getElementById('tableCount').innerText = '0';
         }
 
-        // Handle File Uploads (Excel, CSV, SQL)
+        // Handle File Upload
         function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const fileName = file.name;
-            const ext = fileName.split('.').pop().toLowerCase();
-            const rawTableName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
-
-            const reader = new FileReader();
-
-            if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        
-                        let importedCount = 0;
-                        workbook.SheetNames.forEach((sheetName) => {
-                            const worksheet = workbook.Sheets[sheetName];
-                            const json = XLSX.utils.sheet_to_json(worksheet);
-                            
-                            if (json && json.length > 0) {
-                                const sanitizedSheetName = (workbook.SheetNames.length > 1 
-                                    ? `${rawTableName}_${sheetName}` 
-                                    : rawTableName).replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
-                                
-                                registerTableInMemory(sanitizedSheetName, json);
-                                importedCount++;
-                            }
-                        });
-
-                        showToast('File Berhasil Diimpor', `${importedCount} tabel dari file "${fileName}" siap di-query.`, 'success');
-                    } catch (err) {
-                        showToast('Gagal Membaca File', err.message, 'error');
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            } else if (ext === 'sql') {
-                reader.onload = function(e) {
-                    const sqlContent = e.target.result;
-                    loadSQLStatementsIntoNotebook(sqlContent);
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        // Fetch Google Sheet Public CSV via GID
-        async function fetchGoogleSheet() {
-            const url = document.getElementById('gsheet-url').value.trim();
-            const inputGid = document.getElementById('gsheet-gid').value.trim();
-            let tableName = document.getElementById('gsheet-tablename').value.trim() || "gsheet_data";
-            tableName = tableName.replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
-
-            if (!url) {
-                showToast("URL Kosong", "Masukkan URL Google Sheet terlebih dahulu.", "error");
-                return;
-            }
-
-            // Extract Sheet ID
-            const matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-            if (!matches || !matches[1]) {
-                showToast("URL Tidak Valid", "Format link Google Sheet tidak dapat dikenali.", "error");
-                return;
-            }
-
-            // Extract GID tab if present in URL
-            let gid = inputGid;
-            if (!gid) {
-                const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
-                gid = gidMatch ? gidMatch[1] : '0';
-            }
-
-            const sheetId = matches[1];
-            const csvExportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-
-            try {
-                showToast("Fetching Sheet...", `Mengunduh Sheet Tab (GID: ${gid})...`, "info");
-                const response = await fetch(csvExportUrl);
-                if (!response.ok) throw new Error("Gagal mengunduh sheet tab. Pastikan spreadsheet publik.");
-                
-                const csvText = await response.text();
-                const workbook = XLSX.read(csvText, { type: 'string' });
-                const firstSheet = workbook.SheetNames[0];
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-
-                if (!json || json.length === 0) {
-                    throw new Error("Sheet kosong atau tidak mengandung data.");
-                }
-
-                registerTableInMemory(tableName, json);
-                closeGoogleSheetModal();
-                showToast("Google Sheet Terhubung", `Tab terimpor sebagai tabel "${tableName}".`, "success");
-            } catch (err) {
-                showToast("Error Google Sheet", err.message, "error");
-            }
-        }
-
-        // Load Sample Multi-Table Dataset
-        function loadSampleData() {
-            const sampleOrders = [
-                { order_id: 1001, customer_id: 1, product: "Laptop Asus Zenbook", total: 12500000, raw_date: "2026/01/12", status: "Completed" },
-                { order_id: 1002, customer_id: 2, product: "Meja Kerja Minimalis", total: 1500000, raw_date: "2026/01/14 10:30", status: "Completed" },
-                { order_id: 1003, customer_id: 1, product: "Monitor 4K LG 27 inch", total: 4500000, raw_date: "2026-02-01", status: "Pending" },
-                { order_id: 1004, customer_id: 3, product: "Mouse Wireless MX Master", total: 1350000, raw_date: "2026.02.10", status: "Completed" },
-                { order_id: 1005, customer_id: 4, product: "Kursi Ergonomis Secretlab", total: 5800000, raw_date: "2026/02/15", status: "Completed" },
-                { order_id: 1006, customer_id: 2, product: "Keyboard Mekanikal Keychron", total: 1850000, raw_date: "2026-02-20", status: "Cancelled" }
-            ];
-
-            const sampleCustomers = [
-                { id: 1, name: "Ahmad Dahlan", region: "Jakarta", tier: "Gold" },
-                { id: 2, name: "Siti Rahma", region: "Bandung", tier: "Silver" },
-                { id: 3, name: "Budi Santoso", region: "Surabaya", tier: "Platinum" },
-                { id: 4, name: "Dewi Lestari", region: "Medan", tier: "Gold" }
-            ];
-
-            registerTableInMemory("orders_sheet", sampleOrders);
-            registerTableInMemory("customers_sheet", sampleCustomers);
-
-            document.getElementById('cells-list').innerHTML = '';
-            cellCount = 0;
-
-            const initialJoinQuery = 
-`-- Query 1: Join Multi-Sheet (orders_sheet & customers_sheet) + Date Cleaning
-SELECT 
-    o.order_id,
-    c.name AS nama_customer,
-    c.region,
-    o.product,
-    o.total,
-    PARSE_DATE_CLEAN(o.raw_date) AS clean_date, -- Formatting string acak ke tipe YYYY-MM-DD
-    o.status
-FROM orders_sheet o
-INNER JOIN customers_sheet c ON o.customer_id = c.id
-WHERE o.status = 'Completed'
-ORDER BY o.total DESC;`;
-
-            addNotebookCell(initialJoinQuery);
-            showToast("Sample Data Dimuat", "Tabel 'orders_sheet' & 'customers_sheet' siap di-query.", "success");
-        }
-
-        // Register JSON Array into AlaSQL Engine Memory
-        function registerTableInMemory(tableName, dataArray) {
-            if (!dataArray || dataArray.length === 0) return;
-
-            try {
-                alasql(`DROP TABLE IF EXISTS ${tableName}`);
-                alasql(`CREATE TABLE ${tableName}`);
-                alasql.tables[tableName].data = dataArray;
-
-                const sampleRow = dataArray[0];
-                const columns = Object.keys(sampleRow).map(key => {
-                    const val = sampleRow[key];
-                    let type = typeof val;
-                    if (type === 'number') type = Number.isInteger(val) ? 'INT' : 'FLOAT';
-                    else if (type === 'string') type = 'VARCHAR';
-                    else type = 'TEXT';
-                    return { name: key, type };
-                });
-
-                loadedTables[tableName] = {
-                    rowCount: dataArray.length,
-                    columns: columns
-                };
-
-                renderSidebarTables();
-            } catch (err) {
-                showToast("Error Registrasi Tabel", err.message, "error");
-            }
-        }
-
-        // Render Tables Inspector List in Sidebar
-        function renderSidebarTables() {
-            const container = document.getElementById('tables-container');
-            const noTablesMsg = document.getElementById('no-tables-msg');
-            const tableCountBadge = document.getElementById('table-count');
-
-            const keys = Object.keys(loadedTables);
-            tableCountBadge.innerText = keys.length;
-
-            if (keys.length === 0) {
-                noTablesMsg.classList.remove('hidden');
-                container.innerHTML = '';
-                return;
-            }
-
-            noTablesMsg.classList.add('hidden');
-            container.innerHTML = keys.map(tName => {
-                const table = loadedTables[tName];
-                return `
-                    <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 space-y-2 text-xs shadow-sm">
-                        <div class="flex items-center justify-between">
-                            <span class="font-semibold text-foreground flex items-center gap-1.5 font-mono">
-                                <i data-lucide="table" class="w-3.5 h-3.5 text-blue-400"></i> ${tName}
-                            </span>
-                            <span class="text-[10px] bg-zinc-800 px-2 py-0.5 rounded text-muted-foreground font-mono">${table.rowCount} rows</span>
-                        </div>
-                        <div class="text-[11px] text-muted-foreground space-y-1 pl-2 border-l border-zinc-800">
-                            ${table.columns.map(c => `
-                                <div class="flex justify-between font-mono">
-                                    <span class="text-zinc-300">${c.name}</span>
-                                    <span class="text-zinc-500 text-[10px]">${c.type}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <button onclick="quickQueryTable('${tName}')" class="w-full text-center py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 font-medium transition">
-                            Select Top 10
-                        </button>
-                    </div>
-                `;
-            }).join('');
-
-            lucide.createIcons();
-        }
-
-        // Quick Query Top 10 Table
-        function quickQueryTable(tableName) {
-            addNotebookCell(`SELECT * FROM ${tableName} LIMIT 10;`);
-        }
-
-        // Add New Colab Notebook Cell
-        function addNotebookCell(defaultQuery = "") {
-            cellCount++;
-            const cellId = `cell-${cellCount}`;
-            const list = document.getElementById('cells-list');
-
-            const cellCard = document.createElement('div');
-            cellCard.id = cellId;
-            cellCard.className = "bg-card border border-border rounded-xl shadow-sm overflow-hidden card-print transition-all";
-
-            cellCard.innerHTML = `
-                <!-- Cell Top Control Bar -->
-                <div class="bg-zinc-900/80 border-b border-border px-4 py-2 flex items-center justify-between no-print">
-                    <div class="flex items-center gap-2 flex-1 mr-2">
-                        <span class="text-[11px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                            SQL [ ${cellCount} ]
-                        </span>
-                        <input type="text" placeholder="Catatan sel / Deskripsi query..." class="text-xs bg-transparent text-zinc-200 placeholder:text-zinc-600 border-none focus:outline-none w-full max-w-md">
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <button onclick="runSingleCell('${cellId}')" title="Run Query (Ctrl+Enter)" class="p-1.5 rounded hover:bg-emerald-500/20 text-emerald-400 transition flex items-center gap-1 text-xs font-mono">
-                            <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> Run
-                        </button>
-                        <button onclick="clearCellOutput('${cellId}')" title="Clear Output" class="p-1.5 rounded hover:bg-zinc-800 text-muted-foreground transition">
-                            <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
-                        </button>
-                        <button onclick="deleteCell('${cellId}')" title="Delete Cell" class="p-1.5 rounded hover:bg-red-500/20 text-red-400 transition">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Code Editor Container -->
-                <div class="p-3 bg-zinc-950 font-mono text-xs text-zinc-100 relative editor-print">
-                    <textarea id="${cellId}-query" rows="3" class="w-full bg-transparent border-none focus:outline-none resize-y text-xs font-mono leading-relaxed" placeholder="Tulis SQL Query di sini... e.g. SELECT * FROM orders_sheet">${defaultQuery}</textarea>
-                </div>
-
-                <!-- Execution Output Container -->
-                <div id="${cellId}-output-container" class="hidden border-t border-border p-4 bg-card space-y-3">
-                    <div class="flex items-center justify-between text-xs text-muted-foreground border-b border-border/50 pb-2">
-                        <div class="flex items-center gap-3">
-                            <span class="flex items-center gap-1 text-emerald-400 font-medium">
-                                <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Executed
-                            </span>
-                            <span id="${cellId}-timer" class="font-mono text-zinc-400">0ms</span>
-                            <span id="${cellId}-rowcount" class="font-mono text-zinc-400">0 rows</span>
-                        </div>
-                        <div class="flex items-center gap-2 no-print">
-                            <button onclick="exportCellCSV('${cellId}')" class="hover:text-foreground text-[11px] flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition">
-                                <i data-lucide="file-spreadsheet" class="w-3 h-3 text-emerald-400"></i> Export CSV
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Result Table Container -->
-                    <div id="${cellId}-table-view" class="overflow-x-auto max-h-80 border border-border rounded-lg"></div>
-                </div>
-
-                <!-- Error Container -->
-                <div id="${cellId}-error" class="hidden border-t border-red-500/30 bg-red-950/20 p-4 text-xs font-mono text-red-300"></div>
-            `;
-
-            list.appendChild(cellCard);
-            lucide.createIcons();
-
-            // Shortcut listener: Ctrl+Enter / Cmd+Enter inside query editor
-            const textarea = document.getElementById(`${cellId}-query`);
-            textarea.addEventListener('keydown', function(e) {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    runSingleCell(cellId);
-                }
-            });
-        }
-
-        function deleteCell(cellId) {
-            const cell = document.getElementById(cellId);
-            if (cell) cell.remove();
-        }
-
-        function clearCellOutput(cellId) {
-            document.getElementById(`${cellId}-output-container`).classList.add('hidden');
-            document.getElementById(`${cellId}-error`).classList.add('hidden');
-        }
-
-        // Execute Single SQL Cell
-        function runSingleCell(cellId) {
-            const query = document.getElementById(`${cellId}-query`).value.trim();
-            const outputContainer = document.getElementById(`${cellId}-output-container`);
-            const errorContainer = document.getElementById(`${cellId}-error`);
-            const tableView = document.getElementById(`${cellId}-table-view`);
-
-            if (!query) {
-                showToast("Query Kosong", "Masukkan query SQL sebelum menjalankan cell.", "error");
-                return;
-            }
-
-            const startTime = performance.now();
-
-            try {
-                // Execute SQL Query via AlaSQL Engine
-                const result = alasql(query);
-                const endTime = performance.now();
-                const execTime = Math.round(endTime - startTime);
-
-                errorContainer.classList.add('hidden');
-                outputContainer.classList.remove('hidden');
-
-                // Record Query History
-                addToHistory(query);
-
-                if (Array.isArray(result)) {
-                    cellResultData[cellId] = result;
-                    document.getElementById(`${cellId}-timer`).innerText = `${execTime}ms`;
-                    document.getElementById(`${cellId}-rowcount`).innerText = `${result.length} rows`;
-
-                    renderResultTable(tableView, result);
-                } else {
-                    tableView.innerHTML = `<div class="p-4 text-xs text-muted-foreground">Query berhasil dieksekusi. Result: ${JSON.stringify(result)}</div>`;
-                }
-
-            } catch (err) {
-                outputContainer.classList.add('hidden');
-                errorContainer.classList.remove('hidden');
-                errorContainer.innerText = `[SQL Error]: ${err.message}`;
-            }
-        }
-
-        // Render SQL Results Table View
-        function renderResultTable(container, data) {
-            if (!data || data.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-xs text-muted-foreground">Query berhasil tetapi tidak menghasilkan baris data.</div>`;
-                return;
-            }
-
-            const headers = Object.keys(data[0]);
-
-            container.innerHTML = `
-                <table class="w-full text-xs text-left text-zinc-300 border-collapse table-print">
-                    <thead class="bg-zinc-900/90 text-zinc-400 sticky top-0 border-b border-border font-mono text-[11px]">
-                        <tr>
-                            ${headers.map(h => `<th class="px-3 py-2 border-r border-border/50 font-medium">${h}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border/40 font-mono text-[11px]">
-                        ${data.map(row => `
-                            <tr class="hover:bg-zinc-900/50 transition">
-                                ${headers.map(h => `<td class="px-3 py-1.5 border-r border-border/30 whitespace-nowrap">${row[h] !== undefined ? row[h] : ''}</td>`).join('')}
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        // Run All Cells Sequentially
-        function runAllCells() {
-            const cells = document.querySelectorAll('[id^="cell-"]');
-            if (cells.length === 0) {
-                showToast("Tidak Ada Cell", "Buat minimal 1 cell query terlebih dahulu.", "info");
-                return;
-            }
-            
-            cells.forEach(cell => {
-                if (cell.id.startsWith('cell-')) {
-                    runSingleCell(cell.id);
-                }
-            });
-            showToast("Run All Executed", "Semua sel query berhasil dieksekusi.", "success");
-        }
-
-        // Auto Generator Snippet JOIN
-        function generateJoinSnippet() {
-            const tables = Object.keys(loadedTables);
-            if (tables.length < 2) {
-                showToast("Butuh Minimal 2 Tabel", "Upload minimal 2 tabel/sheet untuk mencoba fitur JOIN.", "error");
-                return;
-            }
-
-            const t1 = tables[0];
-            const t2 = tables[1];
-            const col1 = loadedTables[t1].columns[0]?.name || 'id';
-            const col2 = loadedTables[t2].columns[0]?.name || 'id';
-
-            const joinSql = `-- Query JOIN Antar Sheet: ${t1} & ${t2}\nSELECT \n    a.*,\n    b.*\nFROM ${t1} a\nLEFT JOIN ${t2} b ON a.${col1} = b.${col2}\nLIMIT 20;`;
-            
-            addNotebookCell(joinSql);
-            showToast("Snippet JOIN Dibuat", "Cell baru berisi query JOIN telah ditambahkan.", "info");
-        }
-
-        // Date Cleaning Snippet Helper
-        function insertDateCleanSnippet() {
-            const dateCleanSql = `-- Cleaning & Formatting Tanggal SQL\nSELECT \n    raw_date,\n    PARSE_DATE_CLEAN(raw_date) AS clean_date, -- Mengubah format string ke YYYY-MM-DD\n    YEAR(PARSE_DATE_CLEAN(raw_date)) AS tahun,\n    MONTH(PARSE_DATE_CLEAN(raw_date)) AS bulan\nFROM orders_sheet;`;
-            
-            addNotebookCell(dateCleanSql);
-            showToast("Snippet Date Clean", "Gunakan PARSE_DATE_CLEAN() atau DATE() untuk merapikan tanggal.", "info");
-        }
-
-        // Export Colab Notebook to PDF
-        function exportToPDF() {
-            showToast("Generating PDF...", "Menyiapkan ekspor PDF bergaya Google Colab.", "info");
-            
-            const element = document.getElementById('notebook-container');
-            const opt = {
-                margin:       0.3,
-                filename:     `SQL_Query_Report_${new Date().toISOString().slice(0,10)}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(element).save();
-        }
-
-        // Export Cell Results to CSV
-        function exportCellCSV(cellId) {
-            const data = cellResultData[cellId];
-            if (!data || data.length === 0) {
-                showToast("Data Kosong", "Tidak ada hasil data untuk diekspor.", "error");
-                return;
-            }
-
-            const worksheet = XLSX.utils.json_to_sheet(data);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "QueryResult");
-            XLSX.writeFile(workbook, `${cellId}_result.csv`);
-        }
-
-        // Export Notebook Queries to .sql File
-        function exportSQLFile() {
-            let sqlContent = `-- Web SQL Studio Saved Session\n-- Generated on: ${new Date().toLocaleString()}\n\n`;
-            
-            const cells = document.querySelectorAll('[id^="cell-"]');
-            cells.forEach((cell, idx) => {
-                if (cell.id.startsWith('cell-')) {
-                    const q = document.getElementById(`${cell.id}-query`).value;
-                    if (q) {
-                        sqlContent += `-- Query Cell [${idx + 1}]\n${q};\n\n`;
-                    }
-                }
-            });
-
-            const blob = new Blob([sqlContent], { type: 'text/sql' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `notebook_queries_${new Date().toISOString().slice(0,10)}.sql`;
-            link.click();
-        }
-
-        // Load Statements from .sql File
-        function handleLoadSQLFile(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const text = e.target.result;
-                loadSQLStatementsIntoNotebook(text);
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Hapus data lama / persistent dummy data
+                clearDatabase();
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+
+                    if (json.length > 0) {
+                        // Formatting nama tabel agar valid di SQL (tanpa spasi/karakter aneh)
+                        const cleanTableName = sheetName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+                        
+                        // Buat tabel di AlaSQL
+                        alasql(`DROP TABLE IF EXISTS ${cleanTableName}`);
+                        alasql(`CREATE TABLE ${cleanTableName}`);
+                        alasql.tables[cleanTableName].data = json;
+
+                        tablesData[cleanTableName] = {
+                            rowCount: json.length,
+                            columns: Object.keys(json[0])
+                        };
+                    }
+                });
+
+                renderSidebar();
+                
+                // Tambahkan otomatis query SELECT * pada tabel pertama yang berhasil diupload
+                const firstTable = Object.keys(tablesData)[0];
+                if (firstTable) {
+                    addCell(`SELECT *\nFROM ${firstTable}\nLIMIT 5;`, `Melihat 5 sampel data dari ${firstTable}`);
+                }
             };
-            reader.readAsText(file);
+            reader.readAsArrayBuffer(file);
         }
 
-        function loadSQLStatementsIntoNotebook(sqlText) {
-            const statements = sqlText.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
-            if (statements.length === 0) return;
+        // Render Interactive Sidebar
+        function renderSidebar() {
+            const container = document.getElementById('tableList');
+            container.innerHTML = '';
+            const keys = Object.keys(tablesData);
+            document.getElementById('tableCount').innerText = keys.length;
 
-            document.getElementById('cells-list').innerHTML = '';
-            cellCount = 0;
+            if (keys.length === 0) {
+                container.innerHTML = `<p class="text-xs text-mutedForeground text-center py-6">Belum ada tabel dimuat.</p>`;
+                return;
+            }
 
-            statements.forEach(stmt => {
-                addNotebookCell(stmt);
-            });
+            keys.forEach(tableName => {
+                const info = tablesData[tableName];
+                const card = document.createElement('div');
+                card.className = "p-3 rounded-lg border border-border bg-card hover:border-emerald-500/50 hover:bg-emerald-500/5 transition cursor-pointer group";
+                
+                // Event Click Sidebar untuk Langsung Bikin Query
+                card.onclick = () => {
+                    addCell(`SELECT *\nFROM ${tableName}\nLIMIT 5;`, `Preview sampel data ${tableName}`);
+                };
 
-            showToast("File SQL Dimuat", `${statements.length} cell query telah dibuat.`, "success");
-        }
+                let colsHTML = info.columns.map(col => 
+                    `<span class="text-[10px] font-mono bg-muted/60 px-1.5 py-0.5 rounded text-mutedForeground">${col}</span>`
+                ).join(' ');
 
-        // Sidebar Navigation Tab Switcher
-        function switchSidebarTab(tab) {
-            document.getElementById('tab-tables').className = tab === 'tables' 
-                ? 'flex-1 text-xs py-1.5 font-medium rounded-sm bg-zinc-800 text-foreground flex items-center justify-center gap-1.5'
-                : 'flex-1 text-xs py-1.5 font-medium rounded-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5';
-            
-            document.getElementById('tab-history').className = tab === 'history' 
-                ? 'flex-1 text-xs py-1.5 font-medium rounded-sm bg-zinc-800 text-foreground flex items-center justify-center gap-1.5'
-                : 'flex-1 text-xs py-1.5 font-medium rounded-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5';
-
-            document.getElementById('content-tables').classList.toggle('hidden', tab !== 'tables');
-            document.getElementById('content-history').classList.toggle('hidden', tab !== 'history');
-        }
-
-        // Record Query to History Log
-        function addToHistory(query) {
-            queryHistory.unshift({ query, timestamp: new Date().toLocaleTimeString() });
-            if (queryHistory.length > 25) queryHistory.pop();
-
-            const historyList = document.getElementById('history-list');
-            const noHistoryMsg = document.getElementById('no-history-msg');
-
-            noHistoryMsg.classList.add('hidden');
-            historyList.innerHTML = queryHistory.map(item => `
-                <div class="bg-zinc-900 border border-zinc-800 rounded p-2 space-y-1 text-xs">
-                    <div class="flex justify-between text-[10px] text-muted-foreground">
-                        <span class="font-semibold text-emerald-400 font-mono">SQL Query</span>
-                        <span>${item.timestamp}</span>
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-bold font-mono text-emerald-400 group-hover:underline flex items-center gap-1.5">
+                            <i data-lucide="database" class="w-3.5 h-3.5"></i> ${tableName}
+                        </span>
+                        <span class="text-[10px] text-mutedForeground font-mono bg-muted px-1.5 py-0.5 rounded">${info.rowCount} rows</span>
                     </div>
-                    <code class="block font-mono text-[11px] text-zinc-200 truncate bg-zinc-950 p-1 rounded border border-zinc-800/50">${item.query}</code>
-                    <button onclick="addNotebookCell('${item.query.replace(/'/g, "\\'").replace(/\n/g, " ")}')" class="text-[10px] text-blue-400 hover:underline flex items-center gap-1">
-                        <i data-lucide="copy" class="w-3 h-3"></i> Copy to Cell
-                    </button>
-                </div>
-            `).join('');
-
-            lucide.createIcons();
-        }
-
-        // Modal Handlers
-        function openGoogleSheetModal() {
-            document.getElementById('gsheet-modal').classList.remove('hidden');
-        }
-        function closeGoogleSheetModal() {
-            document.getElementById('gsheet-modal').classList.add('hidden');
-        }
-
-        // Custom Toast Notification System
-        function showToast(title, message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            const bgColors = {
-                success: 'bg-zinc-900 border-emerald-500/50 text-emerald-300',
-                error: 'bg-zinc-900 border-red-500/50 text-red-300',
-                info: 'bg-zinc-900 border-blue-500/50 text-blue-300'
-            };
-
-            const iconMap = {
-                success: 'check-circle-2',
-                error: 'alert-circle',
-                info: 'info'
-            };
-
-            toast.className = `p-3 rounded-lg border shadow-xl flex items-start gap-3 text-xs min-w-[260px] max-w-xs transition-all transform translate-y-2 opacity-0 pointer-events-auto ${bgColors[type] || bgColors.info}`;
-            
-            toast.innerHTML = `
-                <i data-lucide="${iconMap[type]}" class="w-4 h-4 shrink-0 mt-0.5"></i>
-                <div class="flex-1 space-y-0.5">
-                    <p class="font-semibold text-foreground">${title}</p>
-                    <p class="text-[11px] text-muted-foreground leading-snug">${message}</p>
-                </div>
-            `;
-
-            container.appendChild(toast);
-            lucide.createIcons();
-
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
+                    <div class="flex flex-wrap gap-1 mt-2 max-h-20 overflow-hidden">
+                        ${colsHTML}
+                    </div>
+                `;
+                container.appendChild(card);
             });
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            lucide.createIcons();
         }
+
+        // Load Sample Data
+        function loadSampleData() {
+            clearDatabase();
+            const sampleOrders = [
+                { order_id: 1001, customer_id: 1, product: 'Laptop Asus', total: 12500000, status: 'Completed' },
+                { order_id: 1002, customer_id: 2, product: 'Meja Kerja', total: 1500000, status: 'Completed' }
+            ];
+            alasql('CREATE TABLE sample_orders');
+            alasql.tables['sample_orders'].data = sampleOrders;
+            tablesData['sample_orders'] = { rowCount: sampleOrders.length, columns: Object.keys(sampleOrders[0]) };
+            renderSidebar();
+            addCell(`SELECT * FROM sample_orders;`, `Sample Data Orders`);
+        }
+
+        // Add SQL Cell
+        function addCell(sql = '', desc = '') {
+            cellCount++;
+            const cellId = `cell_${cellCount}`;
+            const container = document.getElementById('notebookCells');
+
+            const cell = document.createElement('div');
+            cell.id = cellId;
+            cell.className = "border border-border rounded-xl bg-card overflow-hidden shadow-sm";
+
+            cell.innerHTML = `
+                <div class="bg-muted/30 px-4 py-2 border-b border-border flex items-center justify-between">
+                    <span class="text-xs font-mono font-semibold text-emerald-400">SQL [ ${cellCount} ]</span>
+                    <input type="text" placeholder="Deskripsi query..." value="${desc}" class="bg-transparent text-xs text-mutedForeground focus:outline-none w-1/2">
+                    <div class="flex items-center gap-2">
+                        <button onclick="runCell('${cellId}')" class="text-xs px-2.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium flex items-center gap-1">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i> Run
+                        </button>
+                        <button onclick="document.getElementById('${cellId}').remove()" class="text-xs p-1 text-mutedForeground hover:text-red-400 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-3">
+                    <textarea id="sql_${cellId}" class="w-full bg-background/80 border border-border rounded-md p-3 font-mono text-xs focus:outline-none focus:border-emerald-500 text-foreground" placeholder="Tulis query SQL...">${sql}</textarea>
+                </div>
+                <div id="output_${cellId}" class="hidden border-t border-border p-4 bg-muted/10"></div>
+            `;
+            container.appendChild(cell);
+            lucide.createIcons();
+            if (sql) runCell(cellId);
+        }
+
+        // Run Single SQL Cell
+        function runCell(cellId) {
+            const sql = document.getElementById(`sql_${cellId}`).value.trim();
+            const outputDiv = document.getElementById(`output_${cellId}`);
+            outputDiv.classList.remove('hidden');
+
+            try {
+                const startTime = performance.now();
+                const res = alasql(sql);
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+
+                if (Array.isArray(res)) {
+                    if (res.length === 0) {
+                        outputDiv.innerHTML = `<p class="text-xs text-mutedForeground italic">Query berhasil dieksekusi. Tidak ada data yang dikembalikan (0 rows) [${duration}ms].</p>`;
+                        return;
+                    }
+
+                    const cols = Object.keys(res[0]);
+                    let tableHTML = `<div class="mb-2 text-xs text-emerald-400 font-mono">✓ Executed in ${duration}ms (${res.length} rows)</div>`;
+                    tableHTML += `<div class="overflow-x-auto max-h-80"><table class="w-full text-xs text-left border-collapse"><thead><tr class="border-b border-border bg-muted/40">`;
+
+                    cols.forEach(col => {
+                        tableHTML += `<th class="p-2 font-mono font-semibold text-mutedForeground">${col}</th>`;
+                    });
+                    tableHTML += `</tr></thead><tbody>`;
+
+                    res.forEach(row => {
+                        tableHTML += `<tr class="border-b border-border/50 hover:bg-muted/20 font-mono">`;
+                        cols.forEach(col => {
+                            tableHTML += `<text class="p-2">${row[col] !== null ? row[col] : 'NULL'}</text>`;
+                        });
+                        tableHTML += `</tr>`;
+                    });
+
+                    tableHTML += `</tbody></table></div>`;
+                    outputDiv.innerHTML = tableHTML;
+                } else {
+                    outputDiv.innerHTML = `<p class="text-xs text-emerald-400 font-mono">✓ Query Executed Successfully. Result: ${JSON.stringify(res)} [${duration}ms]</p>`;
+                }
+            } catch (err) {
+                outputDiv.innerHTML = `<div class="p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 font-mono text-xs">[SQL Error]: ${err.message}</div>`;
+            }
+        }
+
+        function runAllCells() {
+            document.querySelectorAll('[id^="cell_"]').forEach(cell => runCell(cell.id));
+        }
+
+        // Initialize Icons
+        lucide.createIcons();
     </script>
 </body>
 </html>
