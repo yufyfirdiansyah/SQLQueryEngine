@@ -45,9 +45,9 @@
             <div>
                 <h1 class="font-bold text-base flex items-center gap-2">
                     Web SQL Query Studio
-                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">PAGE MANAGER ENGINE</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">PROJECT SHARE ENGINE</span>
                 </h1>
-                <p class="text-xs text-mutedForeground">Analisis Data Excel & Management Saved Pages</p>
+                <p class="text-xs text-mutedForeground">Analisis Data Excel & Multi-Cell Project Manager</p>
             </div>
         </div>
 
@@ -66,13 +66,13 @@
         </span>
     </div>
 
-    <!-- Dynamic Saved Pages List Bar -->
+    <!-- Dynamic Saved Projects List Bar -->
     <div class="bg-card/40 border-b border-border px-6 py-2.5 flex items-center gap-3 overflow-x-auto text-xs">
         <span class="font-semibold text-mutedForeground flex items-center gap-1.5 whitespace-nowrap">
-            <i data-lucide="bookmark" class="w-4 h-4 text-emerald-400"></i> Saved Pages (<span id="savedCount">0</span>):
+            <i data-lucide="folder-kanban" class="w-4 h-4 text-emerald-400"></i> Saved Projects (<span id="savedCount">0</span>):
         </span>
-        <div id="savedPagesList" class="flex items-center gap-2 overflow-x-auto">
-            <span class="text-mutedForeground/60 text-[11px] italic">Belum ada page tersimpan. Ketik query dan simpan di bawah.</span>
+        <div id="savedProjectsList" class="flex items-center gap-2 overflow-x-auto">
+            <span class="text-mutedForeground/60 text-[11px] italic">Belum ada project tersimpan. Buat beberapa query sel di bawah dan simpan sebagai project.</span>
         </div>
     </div>
 
@@ -93,14 +93,20 @@
 
         <!-- Notebook Area -->
         <main class="flex-1 overflow-y-auto p-6 space-y-6">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <h2 class="text-lg font-bold flex items-center gap-2">
-                        <i data-lucide="code-2" class="w-5 h-5 text-emerald-400"></i> SQL Notebook
+                        <i data-lucide="code-2" class="w-5 h-5 text-emerald-400"></i> SQL Notebook Workspace
                     </h2>
-                    <p class="text-xs text-mutedForeground">Tulis query kamu, lalu klik "Save Page" untuk menyimpan ke list bar di atas.</p>
+                    <p class="text-xs text-mutedForeground">Susun query kamu di bawah ini, lalu simpan seluruh notebook ini sebagai Project Page.</p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="saveWholeProject()" class="text-xs font-medium px-3 py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1.5" title="Simpan seluruh cell di notebook ini sebagai 1 Project">
+                        <i data-lucide="save" class="w-4 h-4"></i> Save Project Page
+                    </button>
+                    <button onclick="shareWholeProject()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted text-mutedForeground transition flex items-center gap-1.5" title="Copy Shareable Link untuk seluruh Project">
+                        <i data-lucide="share-2" class="w-4 h-4 text-emerald-400"></i> Share Project Link
+                    </button>
                     <button onclick="addCell()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition flex items-center gap-1">
                         <i data-lucide="plus" class="w-4 h-4"></i> Add Cell
                     </button>
@@ -119,7 +125,7 @@
     <script>
         let tablesData = {};
         let cellCount = 0;
-        let savedPages = JSON.parse(localStorage.getItem('my_sql_pages') || '[]');
+        let savedProjects = JSON.parse(localStorage.getItem('my_sql_projects') || '[]');
 
         function clearDatabase() {
             try {
@@ -240,19 +246,13 @@
 
             const cell = document.createElement('div');
             cell.id = cellId;
-            cell.className = "border border-border rounded-xl bg-card overflow-hidden shadow-sm";
+            cell.className = "border border-border rounded-xl bg-card overflow-hidden shadow-sm cell-item";
 
             cell.innerHTML = `
                 <div class="bg-muted/30 px-4 py-2 border-b border-border flex items-center justify-between flex-wrap gap-2">
                     <span class="text-xs font-mono font-semibold text-emerald-400">SQL [ ${cellCount} ]</span>
-                    <input type="text" id="desc_${cellId}" placeholder="Judul Halaman / Deskripsi Query..." value="${desc}" class="bg-transparent text-xs text-foreground placeholder:text-mutedForeground focus:outline-none w-1/3 font-medium">
+                    <input type="text" id="desc_${cellId}" placeholder="Deskripsi/Judul Query..." value="${desc}" class="bg-transparent text-xs text-foreground placeholder:text-mutedForeground focus:outline-none w-1/2 font-medium">
                     <div class="flex items-center gap-1.5">
-                        <button onclick="saveCurrentPage('${cellId}')" class="text-xs px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1" title="Simpan sebagai Page ke List">
-                            <i data-lucide="bookmark-plus" class="w-3.5 h-3.5"></i> Save Page
-                        </button>
-                        <button onclick="copyShareLink('${cellId}')" class="text-xs px-2.5 py-1 rounded border border-border hover:bg-muted text-mutedForeground transition flex items-center gap-1" title="Copy Shareable Link">
-                            <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Share Link
-                        </button>
                         <button onclick="runCell('${cellId}')" class="text-xs px-2.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium flex items-center gap-1">
                             <i data-lucide="play" class="w-3.5 h-3.5"></i> Run
                         </button>
@@ -262,7 +262,7 @@
                     </div>
                 </div>
                 <div class="p-3">
-                    <textarea id="sql_${cellId}" class="w-full bg-background/80 border border-border rounded-md p-3 font-mono text-xs focus:outline-none focus:border-emerald-500 text-foreground" placeholder="Tulis query SQL di sini...">${sql}</textarea>
+                    <textarea id="sql_${cellId}" class="w-full bg-background/80 border border-border rounded-md p-3 font-mono text-xs focus:outline-none focus:border-emerald-500 text-foreground" placeholder="Tulis query SQL...">${sql}</textarea>
                 </div>
                 <div id="output_${cellId}" class="hidden border-t border-border p-4 bg-muted/10"></div>
             `;
@@ -315,53 +315,67 @@
             }
         }
 
-        // Save Current Query as a Page
-        function saveCurrentPage(cellId) {
-            const sql = document.getElementById(`sql_${cellId}`).value.trim();
-            let desc = document.getElementById(`desc_${cellId}`).value.trim();
-
-            if (!sql) {
-                alert("Query masih kosong!");
-                return;
-            }
-
-            if (!desc) {
-                desc = prompt("Masukkan nama/judul Halaman ini:", "Query Halaman " + (savedPages.length + 1));
-                if (!desc) return;
-                document.getElementById(`desc_${cellId}`).value = desc;
-            }
-
-            const pageObj = {
-                id: Date.now(),
-                title: desc,
-                sql: sql
-            };
-
-            savedPages.push(pageObj);
-            localStorage.setItem('my_sql_pages', JSON.stringify(savedPages));
-            renderSavedPages();
+        // Ambil Seluruh Data Cell di Notebook
+        function getCurrentNotebookData() {
+            const cells = document.querySelectorAll('.cell-item');
+            const notebook = [];
+            cells.forEach(c => {
+                const id = c.id;
+                const desc = document.getElementById(`desc_${id}`).value.trim();
+                const sql = document.getElementById(`sql_${id}`).value.trim();
+                if (sql) {
+                    notebook.push({ desc, sql });
+                }
+            });
+            return notebook;
         }
 
-        // Render List Saved Pages Bar
-        function renderSavedPages() {
-            const container = document.getElementById('savedPagesList');
-            document.getElementById('savedCount').innerText = savedPages.length;
-            container.innerHTML = '';
-
-            if (savedPages.length === 0) {
-                container.innerHTML = `<span class="text-mutedForeground/60 text-[11px] italic">Belum ada page tersimpan. Ketik query dan simpan di bawah.</span>`;
+        // Simpan Seluruh Notebook sebagai Project Page
+        function saveWholeProject() {
+            const notebook = getCurrentNotebookData();
+            if (notebook.length === 0) {
+                alert("Notebook masih kosong! Tulis minimal 1 query sebelum menyimpan project.");
                 return;
             }
 
-            savedPages.forEach((page, index) => {
+            const projTitle = prompt("Masukkan nama Project Page ini:", "Project " + (savedProjects.length + 1));
+            if (!projTitle) return;
+
+            const projectObj = {
+                id: Date.now(),
+                title: projTitle,
+                notebook: notebook
+            };
+
+            savedProjects.push(projectObj);
+            localStorage.setItem('my_sql_projects', JSON.stringify(savedProjects));
+            renderSavedProjects();
+            alert(`Project "${projTitle}" berhasil disimpan ke list bar atas!`);
+        }
+
+        // Render Bar List Saved Projects
+        function renderSavedProjects() {
+            const container = document.getElementById('savedProjectsList');
+            document.getElementById('savedCount').innerText = savedProjects.length;
+            container.innerHTML = '';
+
+            if (savedProjects.length === 0) {
+                container.innerHTML = `<span class="text-mutedForeground/60 text-[11px] italic">Belum ada project tersimpan. Buat beberapa query sel di bawah dan simpan sebagai project.</span>`;
+                return;
+            }
+
+            savedProjects.forEach((proj, index) => {
                 const btnGroup = document.createElement('div');
                 btnGroup.className = "flex items-center rounded border border-border bg-muted/60 text-xs overflow-hidden group hover:border-emerald-500/50 transition";
 
                 btnGroup.innerHTML = `
-                    <button onclick="loadSavedPage(${page.id})" class="px-2.5 py-1 hover:bg-emerald-500/20 hover:text-emerald-300 font-medium whitespace-nowrap transition">
-                        ${index + 1}. ${page.title}
+                    <button onclick="loadSavedProject(${proj.id})" class="px-2.5 py-1 hover:bg-emerald-500/20 hover:text-emerald-300 font-medium whitespace-nowrap transition flex items-center gap-1.5">
+                        <i data-lucide="folder" class="w-3.5 h-3.5 text-amber-400"></i> ${index + 1}. ${proj.title}
                     </button>
-                    <button onclick="deleteSavedPage(${page.id})" class="px-1.5 py-1 text-mutedForeground hover:text-red-400 border-l border-border hover:bg-red-500/10 transition" title="Hapus Page Ini">
+                    <button onclick="shareSpecificProject(${proj.id})" class="px-1.5 py-1 text-mutedForeground hover:text-emerald-400 border-l border-border hover:bg-emerald-500/10 transition" title="Share Project Link">
+                        <i data-lucide="share-2" class="w-3 h-3"></i>
+                    </button>
+                    <button onclick="deleteSavedProject(${proj.id})" class="px-1.5 py-1 text-mutedForeground hover:text-red-400 border-l border-border hover:bg-red-500/10 transition" title="Hapus Project">
                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                     </button>
                 `;
@@ -370,42 +384,78 @@
             lucide.createIcons();
         }
 
-        // Load a Saved Page
-        function loadSavedPage(id) {
-            const page = savedPages.find(p => p.id === id);
-            if (page) {
-                addCell(page.sql, page.title);
+        // Memuat Project Page dari Saved List
+        function loadSavedProject(id) {
+            const proj = savedProjects.find(p => p.id === id);
+            if (proj && proj.notebook) {
+                document.getElementById('notebookCells').innerHTML = '';
+                cellCount = 0;
+                proj.notebook.forEach(item => {
+                    addCell(item.sql, item.desc);
+                });
             }
         }
 
-        // Delete a Saved Page
-        function deleteSavedPage(id) {
-            savedPages = savedPages.filter(p => p.id !== id);
-            localStorage.setItem('my_sql_pages', JSON.stringify(savedPages));
-            renderSavedPages();
+        // Hapus Project dari List
+        function deleteSavedProject(id) {
+            savedProjects = savedProjects.filter(p => p.id !== id);
+            localStorage.setItem('my_sql_projects', JSON.stringify(savedProjects));
+            renderSavedProjects();
         }
 
-        // Copy Share Link for URL Parameter
-        function copyShareLink(cellId) {
-            const sql = document.getElementById(`sql_${cellId}`).value.trim();
-            if (!sql) return;
+        // Shareable Link untuk Project Saat Ini
+        function shareWholeProject() {
+            const notebook = getCurrentNotebookData();
+            if (notebook.length === 0) {
+                alert("Notebook masih kosong!");
+                return;
+            }
+
+            const jsonStr = JSON.stringify(notebook);
+            const encoded = encodeURIComponent(jsonStr);
 
             const url = new URL(window.location.href);
-            url.searchParams.set('query', encodeURIComponent(sql));
-            
+            url.searchParams.set('project', encoded);
+
             navigator.clipboard.writeText(url.href).then(() => {
-                alert("Shareable Link berhasil di-copy!\n\nKirim link ini ke siapa pun untuk otomatis memuat query kamu.");
+                alert("Shareable Project Link berhasil di-copy ke clipboard!\n\nSiapa pun yang membuka link ini akan otomatis melihat seluruh sel query dalam project ini.");
             });
         }
 
-        // Check URL Query Parameter
+        // Shareable Link untuk Project Tertentu dari List
+        function shareSpecificProject(id) {
+            const proj = savedProjects.find(p => p.id === id);
+            if (proj && proj.notebook) {
+                const encoded = encodeURIComponent(JSON.stringify(proj.notebook));
+                const url = new URL(window.location.href);
+                url.searchParams.set('project', encoded);
+
+                navigator.clipboard.writeText(url.href).then(() => {
+                    alert(`Shareable Link untuk Project "${proj.title}" berhasil di-copy!`);
+                });
+            }
+        }
+
+        // Baca URL Parameter ?project= saat Halaman Dibuka
         function checkUrlQuery() {
             const urlParams = new URLSearchParams(window.location.search);
-            const rawQuery = urlParams.get('query');
-            if (rawQuery) {
-                const decodedQuery = decodeURIComponent(rawQuery);
-                addCell(decodedQuery, "Shared Query dari Link URL");
-            } else if (document.getElementById('notebookCells').children.length === 0) {
+            const rawProject = urlParams.get('project');
+            
+            if (rawProject) {
+                try {
+                    const notebook = JSON.parse(decodeURIComponent(rawProject));
+                    if (Array.isArray(notebook)) {
+                        document.getElementById('notebookCells').innerHTML = '';
+                        cellCount = 0;
+                        notebook.forEach(item => {
+                            addCell(item.sql, item.desc);
+                        });
+                        return;
+                    }
+                } catch(e) {}
+            }
+
+            if (document.getElementById('notebookCells').children.length === 0) {
                 addCell("", "");
             }
         }
@@ -415,7 +465,7 @@
         }
 
         window.onload = () => {
-            renderSavedPages();
+            renderSavedProjects();
             addCell("", "");
         };
 
