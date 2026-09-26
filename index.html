@@ -45,16 +45,13 @@
             <div>
                 <h1 class="font-bold text-base flex items-center gap-2">
                     Web SQL Query Studio
-                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">CLIENT-SIDE ENGINE</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">PAGE MANAGER ENGINE</span>
                 </h1>
-                <p class="text-xs text-mutedForeground">Analisis Data Excel, CSV, Google Sheets di Browser</p>
+                <p class="text-xs text-mutedForeground">Analisis Data Excel & Management Saved Pages</p>
             </div>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
-            <button onclick="loadSampleData()" class="text-xs font-medium px-3 py-2 rounded-md border border-border bg-muted/40 hover:bg-muted transition flex items-center gap-1.5">
-                <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Sample Data
-            </button>
             <label class="text-xs font-medium px-3 py-2 rounded-md border border-border bg-emerald-600 text-white hover:bg-emerald-500 transition cursor-pointer flex items-center gap-1.5">
                 <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel / CSV
                 <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)" class="hidden">
@@ -65,8 +62,18 @@
     <!-- Status Loading Bar -->
     <div id="loadingBar" class="hidden bg-emerald-600 text-white text-xs px-6 py-2 flex items-center justify-between">
         <span class="flex items-center gap-2">
-            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memproses dan mengimpor file Excel ke memori SQL...
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memproses file Excel ke memori SQL...
         </span>
+    </div>
+
+    <!-- Dynamic Saved Pages List Bar -->
+    <div class="bg-card/40 border-b border-border px-6 py-2.5 flex items-center gap-3 overflow-x-auto text-xs">
+        <span class="font-semibold text-mutedForeground flex items-center gap-1.5 whitespace-nowrap">
+            <i data-lucide="bookmark" class="w-4 h-4 text-emerald-400"></i> Saved Pages (<span id="savedCount">0</span>):
+        </span>
+        <div id="savedPagesList" class="flex items-center gap-2 overflow-x-auto">
+            <span class="text-mutedForeground/60 text-[11px] italic">Belum ada page tersimpan. Ketik query dan simpan di bawah.</span>
+        </div>
     </div>
 
     <!-- Main Workspace -->
@@ -91,7 +98,7 @@
                     <h2 class="text-lg font-bold flex items-center gap-2">
                         <i data-lucide="code-2" class="w-5 h-5 text-emerald-400"></i> SQL Notebook
                     </h2>
-                    <p class="text-xs text-mutedForeground">Klik nama tabel di sidebar kiri untuk otomatis membuat query sampel.</p>
+                    <p class="text-xs text-mutedForeground">Tulis query kamu, lalu klik "Save Page" untuk menyimpan ke list bar di atas.</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="addCell()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition flex items-center gap-1">
@@ -112,6 +119,7 @@
     <script>
         let tablesData = {};
         let cellCount = 0;
+        let savedPages = JSON.parse(localStorage.getItem('my_sql_pages') || '[]');
 
         function clearDatabase() {
             try {
@@ -142,10 +150,8 @@
                             const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: null });
 
                             if (rawJson && rawJson.length > 0) {
-                                // Sanitasi nama tabel
                                 const cleanTableName = sheetName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
                                 
-                                // Clean & Type Cast Data
                                 const cleanJson = rawJson.map(row => {
                                     let newRow = {};
                                     for (let key in row) {
@@ -173,11 +179,7 @@
 
                         renderSidebar();
                         document.getElementById('loadingBar').classList.add('hidden');
-
-                        const firstTable = Object.keys(tablesData)[0];
-                        if (firstTable) {
-                            addCell(`SELECT *\nFROM ${firstTable}\nLIMIT 5;`, `Melihat sampel data ${firstTable}`);
-                        }
+                        checkUrlQuery();
                     } catch (err) {
                         alert("Gagal membaca file Excel: " + err.message);
                         document.getElementById('loadingBar').classList.add('hidden');
@@ -231,19 +233,6 @@
             lucide.createIcons();
         }
 
-        function loadSampleData() {
-            clearDatabase();
-            const sampleOrders = [
-                { order_id: 1001, customer_id: 1, product: 'Laptop Asus', total: 12500000, status: 'Completed' },
-                { order_id: 1002, customer_id: 2, product: 'Meja Kerja', total: 1500000, status: 'Completed' }
-            ];
-            alasql('CREATE TABLE sample_orders');
-            alasql.tables['sample_orders'].data = sampleOrders;
-            tablesData['sample_orders'] = { rowCount: sampleOrders.length, columns: Object.keys(sampleOrders[0]) };
-            renderSidebar();
-            addCell(`SELECT * FROM sample_orders;`, `Sample Data Orders`);
-        }
-
         function addCell(sql = '', desc = '') {
             cellCount++;
             const cellId = `cell_${cellCount}`;
@@ -254,10 +243,16 @@
             cell.className = "border border-border rounded-xl bg-card overflow-hidden shadow-sm";
 
             cell.innerHTML = `
-                <div class="bg-muted/30 px-4 py-2 border-b border-border flex items-center justify-between">
+                <div class="bg-muted/30 px-4 py-2 border-b border-border flex items-center justify-between flex-wrap gap-2">
                     <span class="text-xs font-mono font-semibold text-emerald-400">SQL [ ${cellCount} ]</span>
-                    <input type="text" placeholder="Deskripsi query..." value="${desc}" class="bg-transparent text-xs text-mutedForeground focus:outline-none w-1/2">
-                    <div class="flex items-center gap-2">
+                    <input type="text" id="desc_${cellId}" placeholder="Judul Halaman / Deskripsi Query..." value="${desc}" class="bg-transparent text-xs text-foreground placeholder:text-mutedForeground focus:outline-none w-1/3 font-medium">
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="saveCurrentPage('${cellId}')" class="text-xs px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1" title="Simpan sebagai Page ke List">
+                            <i data-lucide="bookmark-plus" class="w-3.5 h-3.5"></i> Save Page
+                        </button>
+                        <button onclick="copyShareLink('${cellId}')" class="text-xs px-2.5 py-1 rounded border border-border hover:bg-muted text-mutedForeground transition flex items-center gap-1" title="Copy Shareable Link">
+                            <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Share Link
+                        </button>
                         <button onclick="runCell('${cellId}')" class="text-xs px-2.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium flex items-center gap-1">
                             <i data-lucide="play" class="w-3.5 h-3.5"></i> Run
                         </button>
@@ -267,7 +262,7 @@
                     </div>
                 </div>
                 <div class="p-3">
-                    <textarea id="sql_${cellId}" class="w-full bg-background/80 border border-border rounded-md p-3 font-mono text-xs focus:outline-none focus:border-emerald-500 text-foreground" placeholder="Tulis query SQL...">${sql}</textarea>
+                    <textarea id="sql_${cellId}" class="w-full bg-background/80 border border-border rounded-md p-3 font-mono text-xs focus:outline-none focus:border-emerald-500 text-foreground" placeholder="Tulis query SQL di sini...">${sql}</textarea>
                 </div>
                 <div id="output_${cellId}" class="hidden border-t border-border p-4 bg-muted/10"></div>
             `;
@@ -320,9 +315,109 @@
             }
         }
 
+        // Save Current Query as a Page
+        function saveCurrentPage(cellId) {
+            const sql = document.getElementById(`sql_${cellId}`).value.trim();
+            let desc = document.getElementById(`desc_${cellId}`).value.trim();
+
+            if (!sql) {
+                alert("Query masih kosong!");
+                return;
+            }
+
+            if (!desc) {
+                desc = prompt("Masukkan nama/judul Halaman ini:", "Query Halaman " + (savedPages.length + 1));
+                if (!desc) return;
+                document.getElementById(`desc_${cellId}`).value = desc;
+            }
+
+            const pageObj = {
+                id: Date.now(),
+                title: desc,
+                sql: sql
+            };
+
+            savedPages.push(pageObj);
+            localStorage.setItem('my_sql_pages', JSON.stringify(savedPages));
+            renderSavedPages();
+        }
+
+        // Render List Saved Pages Bar
+        function renderSavedPages() {
+            const container = document.getElementById('savedPagesList');
+            document.getElementById('savedCount').innerText = savedPages.length;
+            container.innerHTML = '';
+
+            if (savedPages.length === 0) {
+                container.innerHTML = `<span class="text-mutedForeground/60 text-[11px] italic">Belum ada page tersimpan. Ketik query dan simpan di bawah.</span>`;
+                return;
+            }
+
+            savedPages.forEach((page, index) => {
+                const btnGroup = document.createElement('div');
+                btnGroup.className = "flex items-center rounded border border-border bg-muted/60 text-xs overflow-hidden group hover:border-emerald-500/50 transition";
+
+                btnGroup.innerHTML = `
+                    <button onclick="loadSavedPage(${page.id})" class="px-2.5 py-1 hover:bg-emerald-500/20 hover:text-emerald-300 font-medium whitespace-nowrap transition">
+                        ${index + 1}. ${page.title}
+                    </button>
+                    <button onclick="deleteSavedPage(${page.id})" class="px-1.5 py-1 text-mutedForeground hover:text-red-400 border-l border-border hover:bg-red-500/10 transition" title="Hapus Page Ini">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                container.appendChild(btnGroup);
+            });
+            lucide.createIcons();
+        }
+
+        // Load a Saved Page
+        function loadSavedPage(id) {
+            const page = savedPages.find(p => p.id === id);
+            if (page) {
+                addCell(page.sql, page.title);
+            }
+        }
+
+        // Delete a Saved Page
+        function deleteSavedPage(id) {
+            savedPages = savedPages.filter(p => p.id !== id);
+            localStorage.setItem('my_sql_pages', JSON.stringify(savedPages));
+            renderSavedPages();
+        }
+
+        // Copy Share Link for URL Parameter
+        function copyShareLink(cellId) {
+            const sql = document.getElementById(`sql_${cellId}`).value.trim();
+            if (!sql) return;
+
+            const url = new URL(window.location.href);
+            url.searchParams.set('query', encodeURIComponent(sql));
+            
+            navigator.clipboard.writeText(url.href).then(() => {
+                alert("Shareable Link berhasil di-copy!\n\nKirim link ini ke siapa pun untuk otomatis memuat query kamu.");
+            });
+        }
+
+        // Check URL Query Parameter
+        function checkUrlQuery() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawQuery = urlParams.get('query');
+            if (rawQuery) {
+                const decodedQuery = decodeURIComponent(rawQuery);
+                addCell(decodedQuery, "Shared Query dari Link URL");
+            } else if (document.getElementById('notebookCells').children.length === 0) {
+                addCell("", "");
+            }
+        }
+
         function runAllCells() {
             document.querySelectorAll('[id^="cell_"]').forEach(cell => runCell(cell.id));
         }
+
+        window.onload = () => {
+            renderSavedPages();
+            addCell("", "");
+        };
 
         lucide.createIcons();
     </script>
