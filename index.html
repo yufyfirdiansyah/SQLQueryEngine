@@ -17,12 +17,9 @@
                         foreground: 'hsl(210 40% 98%)',
                         card: 'hsl(222.2 84% 4.9%)',
                         cardForeground: 'hsl(210 40% 98%)',
-                        primary: 'hsl(210 40% 98%)',
-                        primaryForeground: 'hsl(222.2 47.4% 11.2%)',
                         muted: 'hsl(217.2 32.6% 17.5%)',
                         mutedForeground: 'hsl(215 20.2% 65.1%)',
-                        accent: 'hsl(217.2 32.6% 17.5%)',
-                        accentForeground: 'hsl(210 40% 98%)',
+                        emeraldAccent: '#10b981'
                     }
                 }
             }
@@ -65,6 +62,13 @@
         </div>
     </header>
 
+    <!-- Status Loading Bar -->
+    <div id="loadingBar" class="hidden bg-emerald-600 text-white text-xs px-6 py-2 flex items-center justify-between">
+        <span class="flex items-center gap-2">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memproses dan mengimpor file Excel ke memori SQL...
+        </span>
+    </div>
+
     <!-- Main Workspace -->
     <div class="flex-1 flex overflow-hidden">
         
@@ -87,7 +91,7 @@
                     <h2 class="text-lg font-bold flex items-center gap-2">
                         <i data-lucide="code-2" class="w-5 h-5 text-emerald-400"></i> SQL Notebook
                     </h2>
-                    <p class="text-xs text-mutedForeground">Klik nama tabel di sidebar kiri untuk otomatis membuat query.</p>
+                    <p class="text-xs text-mutedForeground">Klik nama tabel di sidebar kiri untuk otomatis membuat query sampel.</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="addCell()" class="text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition flex items-center gap-1">
@@ -109,60 +113,80 @@
         let tablesData = {};
         let cellCount = 0;
 
-        // Reset AlaSQL Database Total
         function clearDatabase() {
-            alasql('DETACH DATABASE MAIN');
-            alasql('ATTACH DATABASE MAIN');
+            try {
+                Object.keys(tablesData).forEach(t => alasql(`DROP TABLE IF EXISTS ${t}`));
+            } catch(e) {}
             tablesData = {};
             document.getElementById('tableList').innerHTML = '';
             document.getElementById('tableCount').innerText = '0';
         }
 
-        // Handle File Upload
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+            document.getElementById('loadingBar').classList.remove('hidden');
 
-                // Hapus data lama / persistent dummy data
-                clearDatabase();
+            setTimeout(() => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = e.target.result;
+                        const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
 
-                workbook.SheetNames.forEach(sheetName => {
-                    const worksheet = workbook.Sheets[sheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+                        clearDatabase();
 
-                    if (json.length > 0) {
-                        // Formatting nama tabel agar valid di SQL (tanpa spasi/karakter aneh)
-                        const cleanTableName = sheetName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
-                        
-                        // Buat tabel di AlaSQL
-                        alasql(`DROP TABLE IF EXISTS ${cleanTableName}`);
-                        alasql(`CREATE TABLE ${cleanTableName}`);
-                        alasql.tables[cleanTableName].data = json;
+                        workbook.SheetNames.forEach(sheetName => {
+                            const worksheet = workbook.Sheets[sheetName];
+                            const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: null });
 
-                        tablesData[cleanTableName] = {
-                            rowCount: json.length,
-                            columns: Object.keys(json[0])
-                        };
+                            if (rawJson && rawJson.length > 0) {
+                                // Sanitasi nama tabel
+                                const cleanTableName = sheetName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+                                
+                                // Clean & Type Cast Data
+                                const cleanJson = rawJson.map(row => {
+                                    let newRow = {};
+                                    for (let key in row) {
+                                        let cleanKey = key.trim().replace(/[^a-zA-Z0-9_ ]/g, '');
+                                        let val = row[key];
+                                        if (val !== null && val !== '' && !isNaN(val) && typeof val !== 'boolean') {
+                                            newRow[cleanKey] = Number(val);
+                                        } else {
+                                            newRow[cleanKey] = val;
+                                        }
+                                    }
+                                    return newRow;
+                                });
+
+                                alasql(`DROP TABLE IF EXISTS ${cleanTableName}`);
+                                alasql(`CREATE TABLE ${cleanTableName}`);
+                                alasql.tables[cleanTableName].data = cleanJson;
+
+                                tablesData[cleanTableName] = {
+                                    rowCount: cleanJson.length,
+                                    columns: Object.keys(cleanJson[0])
+                                };
+                            }
+                        });
+
+                        renderSidebar();
+                        document.getElementById('loadingBar').classList.add('hidden');
+
+                        const firstTable = Object.keys(tablesData)[0];
+                        if (firstTable) {
+                            addCell(`SELECT *\nFROM ${firstTable}\nLIMIT 5;`, `Melihat sampel data ${firstTable}`);
+                        }
+                    } catch (err) {
+                        alert("Gagal membaca file Excel: " + err.message);
+                        document.getElementById('loadingBar').classList.add('hidden');
                     }
-                });
-
-                renderSidebar();
-                
-                // Tambahkan otomatis query SELECT * pada tabel pertama yang berhasil diupload
-                const firstTable = Object.keys(tablesData)[0];
-                if (firstTable) {
-                    addCell(`SELECT *\nFROM ${firstTable}\nLIMIT 5;`, `Melihat 5 sampel data dari ${firstTable}`);
-                }
-            };
-            reader.readAsArrayBuffer(file);
+                };
+                reader.readAsBinaryString(file);
+            }, 100);
         }
 
-        // Render Interactive Sidebar
         function renderSidebar() {
             const container = document.getElementById('tableList');
             container.innerHTML = '';
@@ -179,14 +203,17 @@
                 const card = document.createElement('div');
                 card.className = "p-3 rounded-lg border border-border bg-card hover:border-emerald-500/50 hover:bg-emerald-500/5 transition cursor-pointer group";
                 
-                // Event Click Sidebar untuk Langsung Bikin Query
                 card.onclick = () => {
                     addCell(`SELECT *\nFROM ${tableName}\nLIMIT 5;`, `Preview sampel data ${tableName}`);
                 };
 
-                let colsHTML = info.columns.map(col => 
+                let colsHTML = info.columns.slice(0, 6).map(col => 
                     `<span class="text-[10px] font-mono bg-muted/60 px-1.5 py-0.5 rounded text-mutedForeground">${col}</span>`
                 ).join(' ');
+
+                if (info.columns.length > 6) {
+                    colsHTML += ` <span class="text-[10px] text-mutedForeground">+${info.columns.length - 6} cols</span>`;
+                }
 
                 card.innerHTML = `
                     <div class="flex items-center justify-between mb-1.5">
@@ -195,7 +222,7 @@
                         </span>
                         <span class="text-[10px] text-mutedForeground font-mono bg-muted px-1.5 py-0.5 rounded">${info.rowCount} rows</span>
                     </div>
-                    <div class="flex flex-wrap gap-1 mt-2 max-h-20 overflow-hidden">
+                    <div class="flex flex-wrap gap-1 mt-2">
                         ${colsHTML}
                     </div>
                 `;
@@ -204,7 +231,6 @@
             lucide.createIcons();
         }
 
-        // Load Sample Data
         function loadSampleData() {
             clearDatabase();
             const sampleOrders = [
@@ -218,7 +244,6 @@
             addCell(`SELECT * FROM sample_orders;`, `Sample Data Orders`);
         }
 
-        // Add SQL Cell
         function addCell(sql = '', desc = '') {
             cellCount++;
             const cellId = `cell_${cellCount}`;
@@ -251,7 +276,6 @@
             if (sql) runCell(cellId);
         }
 
-        // Run Single SQL Cell
         function runCell(cellId) {
             const sql = document.getElementById(`sql_${cellId}`).value.trim();
             const outputDiv = document.getElementById(`output_${cellId}`);
@@ -265,7 +289,7 @@
 
                 if (Array.isArray(res)) {
                     if (res.length === 0) {
-                        outputDiv.innerHTML = `<p class="text-xs text-mutedForeground italic">Query berhasil dieksekusi. Tidak ada data yang dikembalikan (0 rows) [${duration}ms].</p>`;
+                        outputDiv.innerHTML = `<p class="text-xs text-mutedForeground italic">Query berhasil dieksekusi. 0 baris data dikembalikan [${duration}ms].</p>`;
                         return;
                     }
 
@@ -274,14 +298,14 @@
                     tableHTML += `<div class="overflow-x-auto max-h-80"><table class="w-full text-xs text-left border-collapse"><thead><tr class="border-b border-border bg-muted/40">`;
 
                     cols.forEach(col => {
-                        tableHTML += `<th class="p-2 font-mono font-semibold text-mutedForeground">${col}</th>`;
+                        tableHTML += `<th class="p-2 font-mono font-semibold text-mutedForeground border-b border-border">${col}</th>`;
                     });
                     tableHTML += `</tr></thead><tbody>`;
 
                     res.forEach(row => {
                         tableHTML += `<tr class="border-b border-border/50 hover:bg-muted/20 font-mono">`;
                         cols.forEach(col => {
-                            tableHTML += `<text class="p-2">${row[col] !== null ? row[col] : 'NULL'}</text>`;
+                            tableHTML += `<td class="p-2 border-b border-border/30">${row[col] !== null && row[col] !== undefined ? row[col] : 'NULL'}</td>`;
                         });
                         tableHTML += `</tr>`;
                     });
@@ -289,7 +313,7 @@
                     tableHTML += `</tbody></table></div>`;
                     outputDiv.innerHTML = tableHTML;
                 } else {
-                    outputDiv.innerHTML = `<p class="text-xs text-emerald-400 font-mono">✓ Query Executed Successfully. Result: ${JSON.stringify(res)} [${duration}ms]</p>`;
+                    outputDiv.innerHTML = `<p class="text-xs text-emerald-400 font-mono">✓ Executed Successfully: ${JSON.stringify(res)} [${duration}ms]</p>`;
                 }
             } catch (err) {
                 outputDiv.innerHTML = `<div class="p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 font-mono text-xs">[SQL Error]: ${err.message}</div>`;
@@ -300,7 +324,6 @@
             document.querySelectorAll('[id^="cell_"]').forEach(cell => runCell(cell.id));
         }
 
-        // Initialize Icons
         lucide.createIcons();
     </script>
 </body>
